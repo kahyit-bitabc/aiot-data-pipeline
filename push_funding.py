@@ -11,11 +11,26 @@ SYMBOL_KUCOIN = "AIOTUSDTM"
 
 
 def get_binance_funding():
-    return float(requests.get(
-        "https://fapi.binance.com/fapi/v1/premiumIndex",
-        params={"symbol": SYMBOL},
-        timeout=10
-    ).json()["lastFundingRate"])
+    try:
+        resp = requests.get(
+            "https://fapi.binance.com/fapi/v1/premiumIndex",
+            params={"symbol": "AIOTUSDT"},
+            timeout=10
+        )
+
+        data = resp.json()
+
+        # Binance sometimes rate-limits or blocks GitHub IPs
+        if "lastFundingRate" not in data:
+            print("⚠️ Binance response error:", data)
+            return None
+
+        return float(data["lastFundingRate"])
+
+    except Exception as e:
+        print("❌ Binance funding fetch failed:", e)
+        return None
+
 
 
 def get_bingx_funding():

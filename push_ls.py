@@ -15,20 +15,53 @@ def get_binance_ls_ratio(symbol="AIOTUSDT", period="1h"):
         "limit": 1
     }
 
-    r = requests.get(url, params=params, timeout=TIMEOUT)
-    r.raise_for_status()
+    try:
+        resp = requests.get(url, params=params, timeout=10)
 
-    data = r.json()
-    if not data:
-        raise ValueError("Empty Binance response")
+        # HTTP error (403 / 429 / 5xx)
+        if resp.status_code != 200:
+            print(f"[WARN] Binance HTTP {resp.status_code}")
+            return {
+                "ratio": None,
+                "long": None,
+                "short": None
+            }
 
-    row = data[-1]
+        data = resp.json()
 
-    return {
-        "ratio": round(float(row["longShortRatio"]), 2),
-        "long": round(float(row["longAccount"]) * 100, 2),
-        "short": round(float(row["shortAccount"]) * 100, 2)
-    }
+        # Binance sometimes returns empty list
+        if not isinstance(data, list) or len(data) == 0:
+            print("[WARN] Binance returned empty data")
+            return {
+                "ratio": None,
+                "long": None,
+                "short": None
+            }
+
+        row = data[-1]
+
+        # Validate required keys
+        if not all(k in row for k in ("longShortRatio", "longAccount", "shortAccount")):
+            print("[WARN] Missing expected fields in Binance response")
+            return {
+                "ratio": None,
+                "long": None,
+                "short": None
+            }
+
+        return {
+            "ratio": round(float(row["longShortRatio"]), 2),
+            "long": round(float(row["longAccount"]) * 100, 2),
+            "short": round(float(row["shortAccount"]) * 100, 2)
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Binance LS fetch failed: {e}")
+        return {
+            "ratio": None,
+            "long": None,
+            "short": None
+        }
 
 
 # ---------------------------
